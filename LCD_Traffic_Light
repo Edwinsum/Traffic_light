@@ -1,0 +1,202 @@
+#include <Wire.h>                 //enable to communicate with I2C
+#include <LiquidCrystal_I2C.h>    //enable I2C LCD displays
+
+LiquidCrystal_I2C lcd(0x20,16,2); //set LCD 0x20 as address with displaying 16 chars & 2 lines
+
+byte GO[] = {   //create custom char GO
+  B00100,
+  B01110,
+  B11111,
+  B00100,
+  B00100,
+  B00100,
+  B00100,
+  B00100
+};
+
+byte STOP[] = { //create custom char STOP
+  B10001,
+  B01010,
+  B01010,
+  B00100,
+  B00100,
+  B01010,
+  B01010,
+  B10001
+};
+
+#define footmanstopled 8
+#define redled 1
+#define greenled 3
+#define yellowled 2
+#define footmangoled 7
+#define buttonled 9
+int countDown = 20;
+const int button1 = 0;
+const int button2 = 5;
+const int irsensor1 = 4;
+const int irsensor2 =6;
+
+int buttonState = 0;
+int ir_state = LOW;
+
+unsigned long  prevTime_T1 = millis();
+unsigned long  prevTime_T4 = millis();
+
+long interval_T1 = 1000;
+long interval_T4 = 5000;
+
+void setup() {
+  // put your setup code here, to run once:
+  lcd.init();        //initialize LCD
+  lcd.backlight();    //turn on blacklight
+
+  //create custom character to LCD
+  lcd.createChar(0,GO);
+  lcd.createChar(1,STOP);
+  lcd.home();
+  
+  //initialize LCD display structure
+  lcd.clear();
+  lcd.print("TFC: EW:  NS:");
+  lcd.setCursor(0,1);
+  lcd.print("PED: EW:  NS:");
+
+  pinMode(redled, OUTPUT);
+  pinMode(greenled, OUTPUT);
+  pinMode(yellowled, OUTPUT);
+  pinMode(footmangoled, OUTPUT);
+  pinMode(footmanstopled, OUTPUT);
+  pinMode(buttonled, OUTPUT);
+  pinMode(button1, INPUT);
+  pinMode(button2, INPUT);
+}
+
+void loop() {
+  digitalWrite (greenled, HIGH);
+  digitalWrite (yellowled, LOW);
+  digitalWrite (redled, LOW);
+  
+  unsigned long currentTime = millis();
+  int val_1 = digitalRead(irsensor1);
+  if (val_1 == LOW){
+     IRsentcar();
+     if (currentTime - prevTime_T1 > interval_T1){
+     ir_state = !ir_state;
+     digitalWrite(val_1,ir_state);
+
+     prevTime_T1 = currentTime;   
+    }
+  }
+    buttonState = digitalRead(button1);
+    if (buttonState == LOW){
+     digitalWrite (buttonled, HIGH);
+     delay(1000);
+     button();
+      }
+      
+goSign(1);
+  stopSign(0);
+  stopSign(3);  
+  //pedCountDown(1);
+}
+void goSign(int i)    //define goSign function to print custom character for go at corresponding location
+{
+  if(i==0)
+  {
+    lcd.setCursor(8,0);   //set cursor to traffic East-West junction
+  }
+  else if (i==1)
+  {
+    lcd.setCursor(13,0);  //set cursor to traffic North-South junction
+  }
+  lcd.write(0);       //print custom character GO
+}
+
+void stopSign(int i)  //define stopSign function to print custom character for stop at corresponding location
+{
+  if(i==0)    //set cursor to traffic East-West junction if function input i==0
+  {
+    lcd.setCursor(8,0);   
+  }
+  else if (i==1)  //set cursor to traffic North-South junction if function input i==1
+  {
+    lcd.setCursor(13,0);
+  }
+  else if (i==2)  //set cursor to pedestrain East-West junction if function input i==2
+  {
+    lcd.setCursor(13,1);
+  }
+  else if (i==3)  //set cursor to pedestrain North-South junction if function input i==3
+  {
+    lcd.setCursor(13,1);  
+  }
+  lcd.write(1);       //print custom character STOP
+}
+
+void pedCountDown(int i)  //define pedCountDown function to print count change number at corresponding location
+{
+  int k=0;  //initialize int k
+  if(i==0)
+  {
+    k=8;   //set cursor to pedestrain East-West junction
+  }
+  else if (i==1)
+  {
+    k=13;  //set cursor to pedestrain North-South junction
+  }
+  for (int j=countDown;j>=0;j--)
+  {
+    if (j/10>0)       //check if countDown >=10
+    {
+      lcd.setCursor(k,1);   //set cursor to pedestrain East-West junction
+    }
+    else
+    {
+      lcd.setCursor(k,1);   //set cursor to pedestrain North-South junction
+      lcd.print(" ");       //the space " " to delete tens digit
+    }    
+    lcd.print(j);     //print count down number
+    delay(1000);      //wait for 1 second
+  }
+}
+void button()
+{
+  digitalWrite (buttonled, LOW);
+    digitalWrite (greenled, LOW);
+    digitalWrite (yellowled, HIGH);
+    delay (5000);
+    digitalWrite (yellowled, LOW);
+    digitalWrite (redled, HIGH);
+   stopSign(1);
+   stopSign(0);
+    pedCountDown(1);
+  }
+  
+  void IRsentcar()
+  {
+       pedCountDown(1);
+      delay(2000);
+      digitalWrite (greenled, LOW);
+    digitalWrite (yellowled, HIGH);
+    delay (5000);
+    digitalWrite (yellowled, LOW);
+    digitalWrite (redled, HIGH);
+      stopSign(1);
+      goSign(0);
+      pedCountDown(0);
+      delay(2000);
+      if (buttonled == HIGH){
+      button();
+      }else{
+        digitalWrite (yellowled, LOW);
+  digitalWrite (redled, LOW);
+    digitalWrite (greenled, LOW);
+    digitalWrite (yellowled, HIGH);
+    delay (5000);
+  digitalWrite (yellowled, LOW);
+  digitalWrite (redled, LOW);
+  goSign(1);
+        }
+      
+  }
