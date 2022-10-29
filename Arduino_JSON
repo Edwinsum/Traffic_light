@@ -1,0 +1,82 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <Arduino_JSON.h>
+
+#define moisture1 32
+#define moisture2 33
+
+const char ssid[] = "Samsung Galaxy S8+_8653";
+const char password[] = "abcd2001";
+
+HTTPClient http;
+
+unsigned long previous = millis();
+
+void setup() {
+  // put your setup code here, to run once:
+  pinMode(moisture1,INPUT);
+  pinMode(moisture2,INPUT);
+
+  Serial.begin(115200);
+  Serial.println("Hello, ESP32!");
+
+  //WiFi Connection
+  Serial.print("Connecting to WiFi");
+  WiFi.begin(ssid, password);
+  while(WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.print("OK! IP=");
+  Serial.println(WiFi.localIP());
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  unsigned long current = millis();
+  if (current - previous >= 10000)
+  {
+    sensorRead();   //call sensorRead function to read data from moisture sensors
+    previous = current;
+  }
+}
+
+void sensorRead()
+{//Read data from sensors
+   int moiVal1 = analogRead(moisture1)/40.85;
+    int moiVal2 = analogRead(moisture2)/40.85;
+    Serial.print("moisture sensor 1: ");
+    Serial.print(moiVal1);
+    Serial.print(" moisture sensor 2: ");
+    Serial.println(moiVal2);
+       
+    postData(moiVal1, moiVal2); 
+}
+
+void postData(int Val1, int Val2)
+{
+    String endpoint = "https://backend.thinger.io/v3/users/210015364/devices/MyDevice/callback/data";
+
+  Serial.println("Sending request...");
+  Serial.println(endpoint);
+
+  http.begin(endpoint);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization","Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJEZXZpY2VDYWxsYmFja19NeURldmljZSIsInN2ciI6ImFwLXNvdXRoZWFzdC5hd3MudGhpbmdlci5pbyIsInVzciI6IjIxMDAxNTM2NCJ9.j0FUi6iUhQwf78P5mODaTA2pUyfIF3GE_VjOlbaw-S8");
+
+  JSONVar myJsonData;
+  myJsonData["humidPlant1"] = Val1;
+  myJsonData["humidPlant2"] = Val2;
+
+  String httpRequestData = JSON.stringify(myJsonData);
+  Serial.println(httpRequestData);
+
+  int httpCode = http.POST(httpRequestData);
+  Serial.print("HTTP response code");
+  Serial.println(httpCode);
+  http.end();
+
+  Serial.println();
+  Serial.println();
+}
